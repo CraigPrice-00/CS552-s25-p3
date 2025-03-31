@@ -37,6 +37,7 @@ size_t btok(size_t bytes)
         kval++;
         targetBytes = targetBytes >> 1;
     }
+    return kval;
 }
 
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)

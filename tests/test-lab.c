@@ -133,7 +133,13 @@ void test_buddy_init(void)
     }
 }
 
-
+/* test_btok: This test checks the btok function with several different values, ensuring they return the proper k value.*/
+void test_btok(void) {
+    TEST_ASSERT_TRUE(btok(UINT64_C(32)) == 5);
+    TEST_ASSERT_TRUE(btok(UINT64_C(33)) == 6);
+    TEST_ASSERT_TRUE(btok(UINT64_C(64)) == 6);
+    TEST_ASSERT_TRUE(btok(UINT64_C(65)) == 7);
+}
 int main(void) {
   time_t t;
   unsigned seed = (unsigned)time(&t);
