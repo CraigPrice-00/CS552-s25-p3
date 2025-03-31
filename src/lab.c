@@ -31,7 +31,12 @@
  */
 size_t btok(size_t bytes)
 {
-    //DO NOT use math.pow
+    size_t targetBytes = bytes - 1;
+    size_t kval = 0;
+    while (targetBytes != 0) {
+        kval++;
+        targetBytes = targetBytes >> 1;
+    }
 }
 
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
@@ -45,7 +50,7 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
         return NULL;
     }
     //get the kval for the requested size with enough room for the tag and kval fields
-    
+
     //R1 Find a block
 
     //There was not enough memory to satisfy the request thus we need to set error and return NULL
