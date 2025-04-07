@@ -133,6 +133,9 @@ void test_buddy_init(void)
     }
 }
 
+/**
+ * Tests to make sure that realloc to a smaller block size works properly
+ */
 void test_buddy_realloc_smaller(void)
 {
   fprintf(stderr, "->Testing that reallocing to a smaller block works properly\n");
@@ -166,6 +169,9 @@ void test_buddy_realloc_smaller(void)
   buddy_destroy(&pool);
 }
 
+/**
+ * Tests to make sure that realloc to a larger block size works properly
+ */
 void test_buddy_realloc_larger(void)
 {
   fprintf(stderr, "->Testing that reallocing to a larger block works properly\n");
@@ -201,6 +207,9 @@ void test_buddy_realloc_larger(void)
   buddy_destroy(&pool);
 }
 
+/**
+ * Tests to make sure that realloc to the same block size works properly
+ */
 void test_buddy_realloc_same(void)
 {
   fprintf(stderr, "->Testing that reallocing to the same size block works\n");
@@ -228,6 +237,9 @@ void test_buddy_realloc_same(void)
   buddy_destroy(&pool);
 }
 
+/**
+ * Tests to make sure that realloc on no pointer works properly
+ */
 void test_buddy_realloc_no_pointer(void)
 {
   fprintf(stderr, "->Testing that reallocing with no pointer works\n");
@@ -248,6 +260,9 @@ void test_buddy_realloc_no_pointer(void)
   buddy_destroy(&pool);
 }
 
+/**
+ * Tests to make sure that realloc to zero size works properly
+ */
 void test_buddy_realloc_zero_size(void)
 {
   fprintf(stderr, "->Testing that reallocing to zero size works\n");
@@ -270,6 +285,9 @@ void test_buddy_realloc_zero_size(void)
   buddy_destroy(&pool);
 }
 
+/**
+ * Tests to make sure that mallocing multiple times in a row works properly
+ */
 void test_buddy_multiple_malloc(void)
 {
   fprintf(stderr, "->Testing multiple mallocs\n");
