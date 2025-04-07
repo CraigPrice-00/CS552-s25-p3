@@ -165,9 +165,7 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
     //if need a smaller block
     else {
         //need a smaller block
-        //split to needed size, putting the rest on the list
         while (currentKVal != neededKVal) {  
-            //R4 Split
             currentKVal--;
             struct avail* P = (struct avail*)(((uintptr_t)currentBlock) + (1<<currentKVal));
             P->tag = 1;
