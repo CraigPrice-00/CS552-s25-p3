@@ -42,8 +42,8 @@ size_t btok(size_t bytes)
 
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
-    UNUSED(pool);
-    return (struct avail*) ((uintptr_t)buddy ^ UINT64_C(1) << buddy->kval);
+    if (buddy->kval == pool->kval_m) { return NULL; }
+    else { return (struct avail*) ((uintptr_t)buddy ^ UINT64_C(1) << buddy->kval); }
 }
 
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
@@ -90,16 +90,20 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 void buddy_free(struct buddy_pool *pool, void *ptr)
 {
     //get back to the start of the block from the ptr passed to free
-    struct avail* L = (struct avail*) (ptr - sizeof(struct avail));
+    struct avail* L = (struct avail*) ptr - 1;
     //S1 Is buddy available?
+    int count = 0;
     while(true) {
         struct avail* P = buddy_calc(pool, L);
-        if (L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && P->kval != L->kval)) { break; }
+        fprintf(stderr,"Good1 #%d\n", count);
+        if (L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && (P->kval != L->kval))) { break; }
+        fprintf(stderr,"Good2 #%d\n", count);
         //S2 Combine with buddy.
         P->prev->next = P->next;
         P->next->prev = P->prev;
         if (P < L) { L = P; }
         L->kval++;
+        count++;
     }
     //S3 Put on list
     L->tag = 1;
@@ -126,8 +130,8 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
         return buddy_malloc(pool, size);
     }
     if (size == UINT64_C(0)) {
-        buddy_free(pool, ptr);
-        return NULL;
+       buddy_free(pool, ptr);
+       return NULL;
     }
     //otherwise we need to realloc
     struct avail* currentBlock = (struct avail*) (ptr - sizeof(struct avail));
