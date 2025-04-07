@@ -145,12 +145,19 @@ void test_buddy_realloc_smaller(void)
   size_t newK = btok(newSize + sizeof(struct avail));
   TEST_ASSERT_TRUE(oldK != newK);
 
-  void* mem = buddy_malloc(&pool, oldSize);
+  char* mem = (char*) buddy_malloc(&pool, oldSize);
   assert(mem != NULL);
+  for (size_t i =0; i < oldSize; i++) {
+    mem[i] = (char) i;
+  }
   struct avail *tmp = (struct avail *)mem - 1;
   TEST_ASSERT_TRUE(tmp->kval = oldK);
 
-  mem = buddy_realloc(&pool, mem, newSize);
+  mem = (char*) buddy_realloc(&pool, mem, newSize);
+  //ensure the data integrity is maintained
+  for (size_t i =0; i < newSize; i++) {
+    TEST_ASSERT_TRUE(mem[i] == (char) i);
+  }
   struct avail* tmp2 = (struct avail *)mem - 1;
   TEST_ASSERT_TRUE( tmp2->kval = newK);
   //Free the memory and then check to make sure everything is OK
@@ -175,14 +182,17 @@ void test_buddy_realloc_larger(void)
   assert(mem != NULL);
   struct avail *tmp = (struct avail *)mem - 1;
   TEST_ASSERT_TRUE(tmp->kval = oldK);
-  for (int i = 0; i < 10; i++) {
+  for (size_t i = 0; i < oldSize; i++) {
     mem[i] = (char) 100 + i;
   }
 
   mem = (char*) buddy_realloc(&pool, mem, newSize);
-  for (int i = 0; i < 10; i++) {
-    TEST_ASSERT_TRUE(mem[i] == (char) 100 + i);
+
+  //ensure the integrity of data
+  for (size_t i = 0; i < oldSize; i++) {
+    TEST_ASSERT_TRUE(mem[i] == (char) (100 + i));
   }
+  
   struct avail* tmp2 = (struct avail *)mem - 1;
   TEST_ASSERT_TRUE( tmp2->kval = newK);
   //Free the memory and then check to make sure everything is OK
@@ -228,8 +238,10 @@ void test_buddy_realloc_no_pointer(void)
   size_t newK = btok(newSize + sizeof(struct avail));
 
   void* mem = buddy_realloc(&pool, NULL, newSize);
+  assert(mem != NULL);
   struct avail* tmp = (struct avail *)mem - 1;
   TEST_ASSERT_TRUE( tmp->kval == newK);
+  
   //Free the memory and then check to make sure everything is OK
   buddy_free(&pool, mem);
   check_buddy_pool_full(&pool);
@@ -253,6 +265,7 @@ void test_buddy_realloc_zero_size(void)
   TEST_ASSERT_TRUE(tmp->kval = oldK);
 
   mem = buddy_realloc(&pool, mem, newSize);
+  assert(mem == NULL);
   //ensure with a size of 0 that mem was freed properly.
   check_buddy_pool_full(&pool);
   buddy_destroy(&pool);
