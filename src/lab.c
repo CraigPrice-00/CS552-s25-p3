@@ -147,7 +147,8 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
        //try to combine with buddy
         while(true) {
             struct avail* P = buddy_calc(pool, currentBlock);
-            if (currentBlock->kval == neededKVal || currentBlock->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && P->kval != currentBlock->kval)) { break; }
+            if (currentBlock->kval == neededKVal || currentBlock->kval == pool->kval_m || P->tag == BLOCK_RESERVED 
+                || (P->tag == BLOCK_AVAIL && P->kval != currentBlock->kval)) { break; }
             //S2 Combine with buddy.
             P->prev->next = P->next;
             P->next->prev = P->prev;
