@@ -23,11 +23,8 @@
         raise(SIGKILL);          \
     } while (0)
 
-/**
- * @brief Convert bytes to the correct K value
- *
- * @param bytes the number of bytes
- * @return size_t the K value that will fit bytes
+/* btok: this function accepts a number of bytes and calculates the associated kval
+ * bytes: the number of bytes
  */
 size_t btok(size_t bytes)
 {
@@ -40,6 +37,10 @@ size_t btok(size_t bytes)
     return kval;
 }
 
+/* buddy_calc: This function accepts a pool and buddy and returns a pointer to the buddy block
+ * pool: the buddy_pool
+ * buddy: the buddy to calculate the buddy of
+ */
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
     uintptr_t buddyBuddy = (uintptr_t)buddy - (uintptr_t)pool->base;
@@ -47,6 +48,10 @@ struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
     return (struct avail *)((uintptr_t)pool->base + buddyBuddy);
 }
 
+/* buddy_malloc: this function allocates the smallest block to fit the byte size requested
+ * pool: the pool to malloc in
+ * size: the requested size in bytes
+ */
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
 {
     if (pool == NULL || size == 0) {
@@ -91,6 +96,10 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     
 }
 
+/* buddy_free: this function accepts a pointer and frees it from the pool
+ * pool: the buddy_pool to free the pointer from
+ * ptr: the pointer to free
+ */
 void buddy_free(struct buddy_pool *pool, void *ptr)
 {
     if (pool == NULL || ptr == NULL) {
@@ -118,13 +127,10 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
     pool->avail[L->kval].next = L;
 }
 
-/**
- * @brief This is a simple version of realloc.
- *
- * @param pool The memory pool
- * @param ptr  The user memory
- * @param size the new size requested
- * @return void* pointer to the new user memory
+/* buddy_realloc: this function accepts a pointer and new size and reallocates the pointer to the new size
+ * pool: the buddy_pool to realloc within
+ * ptr: the pointer to realloc
+ * size: the size to realloc to
  */
 void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
 {
@@ -187,6 +193,11 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
     }
 }
 
+/* buddy_init: this function initializes the buddy_pool
+ * Written by Professor Panter
+ * pool: the pool to init
+ * size: the size of memory to manage
+ */
 void buddy_init(struct buddy_pool *pool, size_t size)
 {
     size_t kval = 0;
@@ -236,6 +247,10 @@ void buddy_init(struct buddy_pool *pool, size_t size)
     m->next = m->prev = &pool->avail[kval];
 }
 
+/* buddy_destroy: this destroys a buddy_pool and associated data
+ * Written by Shane Panter
+ * pool: the buddy_pool to destroy
+ */
 void buddy_destroy(struct buddy_pool *pool)
 {
     int rval = munmap(pool->base, pool->numbytes);
