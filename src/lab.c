@@ -32,8 +32,8 @@
 size_t btok(size_t bytes)
 {
     size_t targetBytes = bytes - UINT64_C(1);
-    size_t kval = 0;
-    while (targetBytes != 0) {
+    size_t kval = UINT64_C(0);
+    while (targetBytes != UINT64_C(0)) {
         kval++;
         targetBytes = targetBytes >> UINT64_C(1);
     }
@@ -42,8 +42,9 @@ size_t btok(size_t bytes)
 
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
-    if (buddy->kval == pool->kval_m) { return NULL; }
-    else { return (struct avail*) ((uintptr_t)buddy ^ UINT64_C(1) << buddy->kval); }
+    uintptr_t buddyBuddy = (uintptr_t)buddy - (uintptr_t)pool->base;
+    buddyBuddy = buddyBuddy ^ UINT64_C(1) << buddy->kval;
+    return (struct avail *)((uintptr_t)pool->base + buddyBuddy);
 }
 
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
