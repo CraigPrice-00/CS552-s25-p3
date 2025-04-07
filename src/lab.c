@@ -54,6 +54,9 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     }
     //get the kval for the requested size with enough room for the tag and kval fields
     size_t kval = btok(size + sizeof(struct avail));
+    if (kval < SMALLEST_K) {
+        return NULL;
+    }
     //R1 Find a block
     size_t j = UINT64_MAX;
     for (size_t i = kval; i <= pool->kval_m; i++) {
