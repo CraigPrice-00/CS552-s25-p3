@@ -92,7 +92,6 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
 {
     if (pool == NULL || ptr == NULL) {
         fprintf(stderr,"buddy_free: NULL pointer passed\n");
-        errno = EINVAL;
         return;
     }
     //get back to the start of the block from the ptr passed to free
@@ -119,7 +118,7 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
 /**
  * @brief This is a simple version of realloc.
  *
- * @param poolThe memory pool
+ * @param pool The memory pool
  * @param ptr  The user memory
  * @param size the new size requested
  * @return void* pointer to the new user memory
