@@ -31,18 +31,19 @@
  */
 size_t btok(size_t bytes)
 {
-    size_t targetBytes = bytes - 1;
+    size_t targetBytes = bytes - UINT64_C(1);
     size_t kval = 0;
     while (targetBytes != 0) {
         kval++;
-        targetBytes = targetBytes >> 1;
+        targetBytes = targetBytes >> UINT64_C(1);
     }
     return kval;
 }
 
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
-
+    UNUSED(pool);
+    return (struct avail*) ((uintptr_t)buddy ^ UINT64_C(1) << buddy->kval);
 }
 
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
@@ -51,22 +52,62 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
         return NULL;
     }
     //get the kval for the requested size with enough room for the tag and kval fields
-
+    size_t kval = btok(size + sizeof(struct avail));
     //R1 Find a block
-
+    size_t j = UINT64_MAX;
+    for (size_t i = kval; i <= pool->kval_m; i++) {
+        if (pool->avail[i].next != &pool->avail[i]) { //block found
+            j = i;
+            break;
+        }
+    }
     //There was not enough memory to satisfy the request thus we need to set error and return NULL
-
+    if (j == UINT64_MAX) {
+        errno = ENOMEM;
+        return NULL;
+    }
     //R2 Remove from list;
-
+    struct avail* L = pool->avail[j].next;
+    struct avail* availNext = L->next;
+    pool->avail[j].next = availNext;
+    availNext->prev = &pool->avail[j];
+    L->tag = BLOCK_RESERVED;
     //R3 Split required?
-
-    //R4 Split the block
-
+    while (j != kval) {  
+        //R4 Split
+        j--;
+        struct avail* P = (struct avail*)(((uintptr_t)L) + (1<<j));
+        P->tag = 1;
+        P->kval = j;
+        P->next = P->prev = &pool->avail[j];
+        pool->avail[j].next = pool->avail[j].prev = P;
+    }
+    L->kval = j;
+    return (void*) (L + 1);
+    
 }
 
 void buddy_free(struct buddy_pool *pool, void *ptr)
 {
-
+    //get back to the start of the block from the ptr passed to free
+    struct avail* L = (struct avail*) (ptr - sizeof(struct avail));
+    //S1 Is buddy available?
+    while(true) {
+        struct avail* P = buddy_calc(pool, L);
+        if (L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && P->kval != L->kval)) { break; }
+        //S2 Combine with buddy.
+        P->prev->next = P->next;
+        P->next->prev = P->prev;
+        if (P < L) { L = P; }
+        L->kval++;
+    }
+    //S3 Put on list
+    L->tag = 1;
+    struct avail* P = pool->avail[L->kval].next;
+    L->next = P;
+    P->prev = L;
+    L->prev = &pool->avail[L->kval];
+    pool->avail[L->kval].next = L;
 }
 
 /**
@@ -81,6 +122,62 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
 {
     //Required for Grad Students
     //Optional for Undergrad Students
+    if (ptr == NULL) {
+        return buddy_malloc(pool, size);
+    }
+    if (size == UINT64_C(0)) {
+        buddy_free(pool, ptr);
+        return NULL;
+    }
+    //otherwise we need to realloc
+    struct avail* currentBlock = (struct avail*) (ptr - sizeof(struct avail));
+    //if the size they need is within the same block size, just return
+    size_t neededKVal = btok(size + sizeof(struct avail));
+    size_t currentKVal = currentBlock->kval;
+    //if need the same size block
+    if (currentBlock->kval == neededKVal) { return ptr; }
+    //if need a bigger block
+    else if (currentBlock->kval < neededKVal) {
+       //try to combine with buddy
+        while(true) {
+            struct avail* P = buddy_calc(pool, currentBlock);
+            if (currentBlock->kval == neededKVal || currentBlock->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && P->kval != currentBlock->kval)) { break; }
+            //S2 Combine with buddy.
+            P->prev->next = P->next;
+            P->next->prev = P->prev;
+            if (P < currentBlock) { 
+                memcpy(P + 1,currentBlock + 1, UINT64_C(1) << currentKVal);
+                currentBlock = P; 
+            }
+            currentBlock->kval++;
+        }
+        if (currentBlock->kval == neededKVal) { return (void*)currentBlock + sizeof(struct avail); }
+        //otherwise just get a bigger block
+        else {
+            struct avail* newMalloc = buddy_malloc(pool, size);
+            memcpy(newMalloc,currentBlock, UINT64_C(1) << currentKVal);
+            buddy_free(pool, currentBlock);
+        }
+        //set enomem if can't
+        errno = ENOMEM;
+        return NULL;
+    }
+    //if need a smaller block
+    else {
+        //need a smaller block
+        //split to needed size, putting the rest on the list
+        while (currentKVal != neededKVal) {  
+            //R4 Split
+            currentKVal--;
+            struct avail* P = (struct avail*)(((uintptr_t)currentBlock) + (1<<currentKVal));
+            P->tag = 1;
+            P->kval = currentKVal;
+            P->next = P->prev = &pool->avail[currentKVal];
+            pool->avail[currentKVal].next = pool->avail[currentKVal].prev = P;
+        }
+        currentBlock->kval = currentKVal;
+        return (void*) (currentBlock + 1);
+    }
 }
 
 void buddy_init(struct buddy_pool *pool, size_t size)
@@ -143,26 +240,24 @@ void buddy_destroy(struct buddy_pool *pool)
     memset(pool,0,sizeof(struct buddy_pool));
 }
 
-#define UNUSED(x) (void)x
-
 /**
  * This function can be useful to visualize the bits in a block. This can
  * help when figuring out the buddy_calc function!
  */
-static void printb(unsigned long int b)
-{
-     size_t bits = sizeof(b) * 8;
-     unsigned long int curr = UINT64_C(1) << (bits - 1);
-     for (size_t i = 0; i < bits; i++)
-     {
-          if (b & curr)
-          {
-               printf("1");
-          }
-          else
-          {
-               printf("0");
-          }
-          curr >>= 1L;
-     }
-}
+// static void printb(unsigned long int b)
+// {
+//      size_t bits = sizeof(b) * 8;
+//      unsigned long int curr = UINT64_C(1) << (bits - 1);
+//      for (size_t i = 0; i < bits; i++)
+//      {
+//           if (b & curr)
+//           {
+//                printf("1");
+//           }
+//           else
+//           {
+//                printf("0");
+//           }
+//           curr >>= 1L;
+//      }
+// }

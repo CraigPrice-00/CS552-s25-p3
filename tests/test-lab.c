@@ -133,6 +133,130 @@ void test_buddy_init(void)
     }
 }
 
+void test_buddy_realloc_smaller(void)
+{
+  fprintf(stderr, "->Testing that reallocing to a smaller block works properly\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t oldSize = UINT64_C(256);
+  size_t oldK = btok(oldSize + sizeof(struct avail));
+  size_t newSize = UINT64_C(12);
+  size_t newK = btok(newSize + sizeof(struct avail));
+  TEST_ASSERT_TRUE(oldK != newK);
+
+  void* mem = buddy_malloc(&pool, oldSize);
+  assert(mem != NULL);
+  struct avail *tmp = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE(tmp->kval = oldK);
+
+  mem = buddy_realloc(&pool, mem, newSize);
+  struct avail* tmp2 = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE( tmp2->kval = newK);
+  //Free the memory and then check to make sure everything is OK
+  buddy_free(&pool, mem);
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
+
+void test_buddy_realloc_larger(void)
+{
+  fprintf(stderr, "->Testing that reallocing to a larger block works properly\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t oldSize = UINT64_C(12);
+  size_t oldK = btok(oldSize + sizeof(struct avail));
+  size_t newSize = UINT64_C(256);
+  size_t newK = btok(newSize + sizeof(struct avail));
+  TEST_ASSERT_TRUE(oldK != newK);
+
+  char* mem = (char*) buddy_malloc(&pool, oldSize);
+  assert(mem != NULL);
+  struct avail *tmp = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE(tmp->kval = oldK);
+  for (int i = 0; i < 10; i++) {
+    mem[i] = (char) 100 + i;
+  }
+
+  mem = (char*) buddy_realloc(&pool, mem, newSize);
+  for (int i = 0; i < 10; i++) {
+    TEST_ASSERT_TRUE(mem[i] == (char) 100 + i);
+  }
+  struct avail* tmp2 = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE( tmp2->kval = newK);
+  //Free the memory and then check to make sure everything is OK
+  buddy_free(&pool, mem);
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
+
+void test_buddy_realloc_same(void)
+{
+  fprintf(stderr, "->Testing that reallocing to the same size block works\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t oldSize = UINT64_C(256);
+  size_t oldK = btok(oldSize + sizeof(struct avail));
+  size_t newSize = UINT64_C(300);
+  size_t newK = btok(newSize + sizeof(struct avail));
+  TEST_ASSERT_TRUE(oldK == newK);
+
+  void* mem = buddy_malloc(&pool, oldSize);
+  assert(mem != NULL);
+  struct avail *tmp = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE(tmp->kval = oldK);
+
+  mem = buddy_realloc(&pool, mem, newSize);
+  assert(mem != NULL);
+  struct avail* tmp2 = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE( tmp2->kval = newK);
+  //Free the memory and then check to make sure everything is OK
+  buddy_free(&pool, mem);
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
+
+void test_buddy_realloc_no_pointer(void)
+{
+  fprintf(stderr, "->Testing that reallocing with no pointer works\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t newSize = UINT64_C(12);
+  size_t newK = btok(newSize + sizeof(struct avail));
+
+  void* mem = buddy_realloc(&pool, NULL, newSize);
+  struct avail* tmp = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE( tmp->kval == newK);
+  //Free the memory and then check to make sure everything is OK
+  buddy_free(&pool, mem);
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
+
+void test_buddy_realloc_zero_size(void)
+{
+  fprintf(stderr, "->Testing that reallocing to zero size works\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t oldSize = UINT64_C(256);
+  size_t oldK = btok(oldSize + sizeof(struct avail));
+  size_t newSize = UINT64_C(0);
+  TEST_ASSERT_TRUE(newSize == 0);
+
+  void* mem = buddy_malloc(&pool, oldSize);
+  assert(mem != NULL);
+  struct avail *tmp = (struct avail *)mem - 1;
+  TEST_ASSERT_TRUE(tmp->kval = oldK);
+
+  mem = buddy_realloc(&pool, mem, newSize);
+  //ensure with a size of 0 that mem was freed properly.
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
 /* test_btok: This test checks the btok function with several different values, ensuring they return the proper k value.*/
 void test_btok(void) {
     TEST_ASSERT_TRUE(btok(UINT64_C(32)) == 5);
@@ -148,6 +272,11 @@ int main(void) {
   printf("Running memory tests.\n");
 
   UNITY_BEGIN();
+  RUN_TEST(test_buddy_realloc_zero_size);
+  RUN_TEST(test_buddy_realloc_no_pointer);
+  RUN_TEST(test_buddy_realloc_same);
+  RUN_TEST(test_buddy_realloc_larger);
+  RUN_TEST(test_buddy_realloc_smaller);
   RUN_TEST(test_buddy_init);
   RUN_TEST(test_buddy_malloc_one_byte);
   RUN_TEST(test_buddy_malloc_one_large);
