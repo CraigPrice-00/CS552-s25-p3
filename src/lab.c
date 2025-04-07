@@ -76,7 +76,7 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
     while (j != kval) {  
         //R4 Split
         j--;
-        struct avail* P = (struct avail*)(((uintptr_t)L) + (1<<j));
+        struct avail* P = (struct avail*)((uintptr_t)L + (UINT64_C(1)<<j));
         P->tag = 1;
         P->kval = j;
         P->next = P->prev = &pool->avail[j];
@@ -89,24 +89,25 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 
 void buddy_free(struct buddy_pool *pool, void *ptr)
 {
+    if (pool == NULL || ptr == NULL) {
+        fprintf(stderr,"buddy_free: NULL pointer passed\n");
+        errno = EINVAL;
+        return;
+    }
     //get back to the start of the block from the ptr passed to free
     struct avail* L = (struct avail*) ptr - 1;
     //S1 Is buddy available?
-    int count = 0;
     while(true) {
         struct avail* P = buddy_calc(pool, L);
-        fprintf(stderr,"Good1 #%d\n", count);
-        if (L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && (P->kval != L->kval))) { break; }
-        fprintf(stderr,"Good2 #%d\n", count);
+        if ( L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && (P->kval != L->kval))) { break; }
         //S2 Combine with buddy.
         P->prev->next = P->next;
         P->next->prev = P->prev;
         if (P < L) { L = P; }
         L->kval++;
-        count++;
     }
     //S3 Put on list
-    L->tag = 1;
+    L->tag = BLOCK_AVAIL;
     struct avail* P = pool->avail[L->kval].next;
     L->next = P;
     P->prev = L;

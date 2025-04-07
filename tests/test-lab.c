@@ -143,7 +143,7 @@ void test_buddy_realloc_smaller(void)
   size_t oldK = btok(oldSize + sizeof(struct avail));
   size_t newSize = UINT64_C(12);
   size_t newK = btok(newSize + sizeof(struct avail));
-  TEST_ASSERT_TRUE(oldK != newK);
+  TEST_ASSERT_TRUE(oldK > newK);
 
   char* mem = (char*) buddy_malloc(&pool, oldSize);
   assert(mem != NULL);
@@ -176,7 +176,7 @@ void test_buddy_realloc_larger(void)
   size_t oldK = btok(oldSize + sizeof(struct avail));
   size_t newSize = UINT64_C(256);
   size_t newK = btok(newSize + sizeof(struct avail));
-  TEST_ASSERT_TRUE(oldK != newK);
+  TEST_ASSERT_TRUE(oldK < newK);
 
   char* mem = (char*) buddy_malloc(&pool, oldSize);
   assert(mem != NULL);
@@ -269,8 +269,37 @@ void test_buddy_realloc_zero_size(void)
   check_buddy_pool_full(&pool);
   buddy_destroy(&pool);
 }
+
+void test_buddy_multiple_malloc(void)
+{
+  fprintf(stderr, "->Testing multiple mallocs\n");
+  struct buddy_pool pool;
+  size_t bytes = UINT64_C(1) << MIN_K;
+  buddy_init(&pool, bytes);
+  size_t firstSize = UINT64_C(372);
+  size_t firstK = btok(firstSize + sizeof(struct avail));
+  size_t secondSize = UINT64_C(5000);
+  size_t secondK = btok(secondSize + sizeof(struct avail));
+
+  char* mem1 = (char*) buddy_malloc(&pool, firstSize);
+  assert(mem1 != NULL);
+  struct avail *tmp1 = (struct avail *)mem1 - 1;
+  TEST_ASSERT_TRUE(tmp1->kval = firstK);
+
+  char* mem2 = (char*) buddy_malloc(&pool, secondSize);
+  assert(mem2 != NULL);
+  struct avail *tmp2 = (struct avail *)mem2 - 1;
+  TEST_ASSERT_TRUE(tmp2->kval = secondK);
+
+  //Free the memory and then check to make sure everything is OK
+  buddy_free(&pool, mem1);
+  buddy_free(&pool, mem2);
+  check_buddy_pool_full(&pool);
+  buddy_destroy(&pool);
+}
 /* test_btok: This test checks the btok function with several different values, ensuring they return the proper k value.*/
 void test_btok(void) {
+    fprintf(stderr, "->Testing btok\n");
     TEST_ASSERT_TRUE(btok(UINT64_C(32)) == 5);
     TEST_ASSERT_TRUE(btok(UINT64_C(33)) == 6);
     TEST_ASSERT_TRUE(btok(UINT64_C(64)) == 6);
@@ -284,6 +313,7 @@ int main(void) {
   printf("Running memory tests.\n");
 
   UNITY_BEGIN();
+  RUN_TEST(test_buddy_multiple_malloc);
   RUN_TEST(test_buddy_realloc_zero_size);
   RUN_TEST(test_buddy_realloc_no_pointer);
   RUN_TEST(test_buddy_realloc_same);
@@ -292,5 +322,6 @@ int main(void) {
   RUN_TEST(test_buddy_init);
   RUN_TEST(test_buddy_malloc_one_byte);
   RUN_TEST(test_buddy_malloc_one_large);
+  RUN_TEST(test_btok);
 return UNITY_END();
 }
