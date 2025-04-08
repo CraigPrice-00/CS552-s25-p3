@@ -28,6 +28,9 @@
  */
 size_t btok(size_t bytes)
 {
+    if (bytes == 0) {
+        fprintf(stderr, "byte size 0 passed to btok\n");
+    }
     size_t targetBytes = bytes - UINT64_C(1);
     size_t kval = UINT64_C(0);
     while (targetBytes != UINT64_C(0)) {
@@ -43,6 +46,10 @@ size_t btok(size_t bytes)
  */
 struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 {
+    if (pool == NULL || buddy == NULL) { 
+        fprintf(stderr,"null pointer passed to buddy_calc");
+        return NULL;
+    }
     uintptr_t buddyBuddy = (uintptr_t)buddy - (uintptr_t)pool->base;
     buddyBuddy = buddyBuddy ^ UINT64_C(1) << buddy->kval;
     return (struct avail *)((uintptr_t)pool->base + buddyBuddy);
@@ -55,6 +62,7 @@ struct avail *buddy_calc(struct buddy_pool *pool, struct avail *buddy)
 void *buddy_malloc(struct buddy_pool *pool, size_t size)
 {
     if (pool == NULL || size == 0) {
+        fprintf(stderr, "null pointer passed to buddy_malloc\n");
         return NULL;
     }
     //get the kval for the requested size with enough room for the tag and kval fields
@@ -103,7 +111,7 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
 void buddy_free(struct buddy_pool *pool, void *ptr)
 {
     if (pool == NULL || ptr == NULL) {
-        fprintf(stderr,"buddy_free: NULL pointer passed\n");
+        fprintf(stderr,"null pointer passed to buddy_free\n");
         return;
     }
     //get back to the start of the block from the ptr passed to free
@@ -136,6 +144,10 @@ void *buddy_realloc(struct buddy_pool *pool, void *ptr, size_t size)
 {
     //Required for Grad Students
     //Optional for Undergrad Students
+    if (pool == NULL) {
+        fprintf(stderr, "null pointer pool passed to buddy_realloc\n");
+        return NULL;
+    }
     if (ptr == NULL) {
         return buddy_malloc(pool, size);
     }
