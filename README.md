@@ -1,11 +1,17 @@
 # Makefile Project Template
-
-Steps to configure, build, run, and test the project.
+Operating Systems Project #3 - Buddy Memory Manger
+Steps to configure, build, run, and test the Buddy Memory Manger project
 
 ## Building
 
 ```bash
 make
+```
+
+## Building Debug Version
+
+```bash
+make debug
 ```
 
 ## Testing
