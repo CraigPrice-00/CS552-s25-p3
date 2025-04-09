@@ -100,9 +100,13 @@ void *buddy_malloc(struct buddy_pool *pool, size_t size)
         pool->avail[j].next = pool->avail[j].prev = P;
     }
     L->kval = j;
-    return (void*) (L + 1);
+    return L + 1;
     
 }
+
+/*
+    CODE REVIEW: updated the while loop to be more clear.
+*/
 
 /* buddy_free: this function accepts a pointer and frees it from the pool
  * pool: the buddy_pool to free the pointer from
@@ -116,19 +120,19 @@ void buddy_free(struct buddy_pool *pool, void *ptr)
     }
     //get back to the start of the block from the ptr passed to free
     struct avail* L = (struct avail*) ptr - 1;
+    struct avail* P = buddy_calc(pool, L);
     //S1 Is buddy available?
-    while(true) {
-        struct avail* P = buddy_calc(pool, L);
-        if ( L->kval == pool->kval_m || P->tag == BLOCK_RESERVED || (P->tag == BLOCK_AVAIL && (P->kval != L->kval))) { break; }
+    while(L->kval < pool->kval_m && P->tag == BLOCK_AVAIL) {
         //S2 Combine with buddy.
         P->prev->next = P->next;
         P->next->prev = P->prev;
         if (P < L) { L = P; }
         L->kval++;
+        P = buddy_calc(pool, L);
     }
     //S3 Put on list
     L->tag = BLOCK_AVAIL;
-    struct avail* P = pool->avail[L->kval].next;
+    P = pool->avail[L->kval].next;
     L->next = P;
     P->prev = L;
     L->prev = &pool->avail[L->kval];
