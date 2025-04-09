@@ -1,7 +1,7 @@
 # Operating Systems Project #3
 Buddy Memory Manger 
 
-# Steps to configure, build, run, and test the Buddy Memory Manger project:
+# Steps to configure, build, run, and test:
 
 ## Building
 
